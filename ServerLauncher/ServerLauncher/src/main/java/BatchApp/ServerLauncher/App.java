@@ -66,6 +66,7 @@ public class App extends ListenerAdapter
 	
 	final Boolean expectingHeavy = true;		// Enable heavy mode or not
 	final int howHeavy = 20;					// How many lines to send in heavy mode before going light, -1 for unlimited
+	final long logFlushPeriod = (long) (0.5 * 1000);	// How often to flush the buffer and send a message (in milliseconds)
 	
 	User verifyCheck = null; 				// Used for y/n responses 
 	String verifyName = null;				// Same purpose
@@ -379,10 +380,6 @@ public class App extends ListenerAdapter
 				else if(message.startsWith("help", 1)) {
 					msgC.sendMessage("Check " + event.getGuild().getTextChannelsByName("info", false).get(0).getAsMention() + " for command info and server details.").queue();
 				}
-				//Test func
-				else if(message.startsWith("test", 1) && dsp != null) {
-					dsp.testFunction();
-				}
 			}
 		}
 		else if(verifyCheck != null && notBot) {	// Check for y/n, make sure its not self/bot
@@ -479,7 +476,7 @@ public class App extends ListenerAdapter
 		pb.directory(dir);
 		try {
 			serverP = pb.start();
-			new Thread(dsp = new DiscordSyncPipe(serverP.getInputStream(), ch, expectingHeavy, howHeavy, outpCh, this)).start();		// Starts input thread
+			new Thread(dsp = new DiscordSyncPipe(serverP.getInputStream(), ch, logFlushPeriod, outpCh, this)).start();		// Starts input thread
 		} catch (IOException e) {
 			e.printStackTrace();
 			return false;
@@ -642,11 +639,6 @@ public class App extends ListenerAdapter
 	
     public static void main( String[] args ) throws LoginException, InterruptedException
     {
-    	/*List<String> test = GetStringsFromTextFile("C:\\Users\\JoeRogang\\Documents\\BetterMC_forge\\libraries\\net\\minecraftforge\\forge\\1.19.2-43.2.8\\win_args.txt");
-    	test.forEach(s -> System.out.println(s));
-    	if(true)
-    		return;*/
-    	
     	String token = "";		// Doing the smart thing and reading the token from a file
     	try {
 			Scanner sc = new Scanner(new File("token.txt"));
@@ -705,24 +697,31 @@ public class App extends ListenerAdapter
 
 class DiscordSyncPipe implements Runnable
 {
+	public long TimeSinceLastMessage;
+	
 	private final InputStream istrm_;
 	private final MessageChannel chan_;
-	private final Boolean heavyLoad;
-	private final int heavyStart;
+	//private final Boolean heavyLoad;
+	//private final int heavyStart;
 	private final MessageChannel cmdChan_;
 	private final App bot_;		// Only has this so it can stop itself
 	private final Pattern ipRegEx;	// Use for checking and removing IP addresses from the output
+	private String buffer;
+	private Timer bufferClearerTimer;		// Clears out buffer at regular intervals
+	private final long bufferFlushPeriod_;
 	
 	private Boolean doBackup;	// Whether we do a backup when server stops 
 	
-	public DiscordSyncPipe(InputStream istrm,  MessageChannel chan, Boolean isHeavy, int starts, MessageChannel cmdChan, App bot) {
+	public DiscordSyncPipe(InputStream istrm, MessageChannel chan, long bufferFlushPeriod, MessageChannel cmdChan, App bot) {
 		istrm_ = istrm;
 		chan_ = chan;
-		heavyLoad = isHeavy;			// Whether there will be a heavy input load 
-		heavyStart = starts;			// Number of lines to run as a heavy load before transitioning to a regular load, -1 for infinite (i think)
+		//heavyLoad = isHeavy;			// Whether there will be a heavy input load 
+		//heavyStart = starts;			// Number of lines to run as a heavy load before transitioning to a regular load, -1 for infinite (i think)
 		cmdChan_ = cmdChan;				// Output a final message when stream closes
 		bot_ = bot;						// Here to pass through the stop command. Pretty wacky, aint it?
+		bufferFlushPeriod_ = bufferFlushPeriod;			// Milliseconds needed to pass before flushing the buffer
 		doBackup = false;
+		buffer = "";
 		
 		ipRegEx = Pattern.compile("\\[\\/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}:\\d+\\]");	// Hardcoding IP regex from server format
 	}
@@ -731,90 +730,58 @@ class DiscordSyncPipe implements Runnable
 		doBackup = true;
 	}
 	
-	public void testFunction() {
-		cmdChan_.sendMessage("Test"+System.currentTimeMillis()).queue();
+	// Send the current buffer as a message
+	public void sendMessage() {		
+		if(buffer.length() > 0) {	// Make sure the buffer contains something
+			
+			if(buffer.length() >= 2000) {	// If its greater than 2000 chars, send 2000 chars
+				chan_.sendMessage(buffer.substring(0, 2000).trim()).queue();
+				buffer = buffer.substring(2000).concat("\n");	// Add the extra to the buffer for next time
+			}
+			else {
+				chan_.sendMessage(buffer.trim()).queue();	// Otherwise, just send whatever is inside the buffer and reset it
+				buffer = "";
+			}
+		}
 	}
 	
 	public void run() {
 		try 
 		{
 			BufferedReader reader = new BufferedReader(new InputStreamReader(istrm_));		// Turns out buffered reader works fine and I don't need to use a byte array
-			if(heavyLoad) {				// Expecting there to be a large number of input lines
-				int maxedLines = heavyStart;
-				String buff = "";
-				for(String in = " "; (in = reader.readLine()) != null;)				// Continues to read until there is no more possible input
-				{
-					System.out.println(in);
-					if(in.startsWith("[")) {	// Filters out lines that do not contain a timestamp (often error tracebacks, etc)
-						//[10:27:20 INFO]: [Server] stopnow:1234
-						if(in.startsWith("[Server] stopnow:1234", 33)) {
-							// Message from server that means it needs to shutdown
-							System.out.println("No activity threshold reached, stopping server automatically");
-							cmdChan_.sendMessage("Server has been online for without players for 1 hour. Automatically stopping...").queue();
-							bot_.stopServer(0);
-						}
-						else {
-							in = ipRegEx.matcher(in).replaceAll("[/**.**.**.***:****]");	// Strip away IP addresses from the log output (no more doxxing!!!)
-							buff = buff.concat(in);
-						/*
-						try {
-							chan_.sendMessage(in).queue();
-						}
-						catch(IllegalArgumentException e) {
-							chan_.sendMessage(in.substring(0, 1996) + "-").queue();				// Shortened version w/ '-' to show it being cut off
-						}
-						 */
-							if(maxedLines != 0) {
-								if(buff.length() >= 2000) {
-									chan_.sendMessage(buff.substring(0, 2000).trim()).queue();
-									buff = buff.substring(2000).concat("\n");
-									if(maxedLines > 0)  
-										maxedLines--;
-								}
-								else {
-									buff = buff.concat("\n");
-								}
-							}
-							else {
-								if(buff.length() >= 2000) {
-									chan_.sendMessage(buff.substring(0, 2000).trim()).queue();
-									buff = buff.substring(2000).concat("\n");
-								}
-								else {
-									chan_.sendMessage(buff.trim()).queue();
-									buff = "";
-								}
-							}
-						}
-					}
-				}
-				
-				if(buff.length() > 0)
-					chan_.sendMessage(buff).queue();
-			}
-			else {			// No large input lines, can handle normally
-				for(String in = " "; (in = reader.readLine()) != null;)				// Continues to read until there is no more possible input
-				{
-					System.out.println(in);
-					//[20:12:38] [Server thread/INFO]: [Server] stopnow:1234
-					if(in.startsWith("[") && in.startsWith("[Server] stopnow:1234", 33)) {
+			TimeSinceLastMessage = System.currentTimeMillis();		// Set time right now to prevent issues if the daemon tries to send before input
+			bufferClearerTimer = new Timer(true);					// Init timer as daemon
+			bufferClearerTimer.scheduleAtFixedRate(new BufferSend(this, bufferFlushPeriod_), bufferFlushPeriod_, bufferFlushPeriod_);
+			
+			for(String in = " "; (in = reader.readLine()) != null;)				// Continues to read until there is no more possible input
+			{
+				System.out.println(in);
+				if(in.startsWith("[")) {	// Filters out lines that do not contain a timestamp (often error tracebacks, etc)
+					TimeSinceLastMessage = System.currentTimeMillis();		// Get a viable buffer string, update the buffer
+					
+					//[10:27:20 INFO]: [Server] stopnow:1234
+					if(in.startsWith("[Server] stopnow:1234", 33)) {
 						// Message from server that means it needs to shutdown
 						System.out.println("No activity threshold reached, stopping server automatically");
 						cmdChan_.sendMessage("Server has been online for without players for 1 hour. Automatically stopping...").queue();
 						bot_.stopServer(0);
 					}
 					else {
-						in = ipRegEx.matcher(in).replaceAll("[/\\*\\*.\\*\\*.\\*\\*.\\*\\**:\\***\\*]");	// Strip away IP addresses from the log output (no more doxxing!!!)
-						
-						try {
-							chan_.sendMessage(in).queue();
+						in = ipRegEx.matcher(in).replaceAll("[/\\\\*\\\\*.\\\\*\\\\*.\\\\*\\\\*.\\\\*\\\\**:\\\\***\\\\*]");	// Strip away IP addresses from the log output (no more doxxing!!!)
+						buffer = buffer.concat(in);			// Then add message to buffer
+
+						if(buffer.length() >= 2000) {
+							sendMessage();		// We maxed out our buffer, send message
 						}
-						catch(IllegalArgumentException e) {
-							chan_.sendMessage(in.substring(0, 1996) + "-").queue();				// Shortened version w/ '-' to show it being cut off
+						else {
+							buffer = buffer.concat("\n");	// Add a newline for the next line received
 						}
 					}
 				}
 			}
+			
+			bufferClearerTimer.cancel();
+			sendMessage();		// Sends last message in buffer
 			
 			cmdChan_.sendMessage("Server stopped.").queue();					// Sends a message to indicate server is stopped
 			chan_.getJDA().getPresence().setStatus(OnlineStatus.IDLE);			// Sets presence to idle once the server is stopped
@@ -851,6 +818,26 @@ class TimerHelper extends TimerTask 	// I hope I'm doing this right
 		botPointer.verifyName = null;
 		
 		timeout.sendMessage("Query timeout! It takes a lot of resources to do this so make a decision next time, ok?").queue();       // This is a lie I'm going through the process anyways
+	}
+	
+}
+
+class BufferSend extends TimerTask
+{
+	DiscordSyncPipe dsp; 
+	long maxDelay;
+	
+	public BufferSend(DiscordSyncPipe d, long delay) {		// Delay measured in seconds
+		dsp = d;
+		maxDelay = delay;
+	}
+	
+	@Override
+	public void run() {
+		if(maxDelay < System.currentTimeMillis() - dsp.TimeSinceLastMessage) {
+			// if maxDelayMillis has elapsed since last message received, send message and clear buffer
+			dsp.sendMessage();
+		}
 	}
 	
 }
