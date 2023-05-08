@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -49,8 +50,8 @@ public class App extends ListenerAdapter
 	final String logchannel = "server-log";									// Server log
 	final String revChannel = "revives";									// Revive log
 	final String lobbyChannel = "lobby-commands";							// Lobby command input
-	final String mcDir = "C:\\Users\\JoeRogang\\Documents\\Fabric_Server_1";		// Folder directory for server.jar
-	final String backupDir = "C:\\Users\\JoeRogang\\Documents\\MCBackups\\Fabric_Server_1";		// Folder where zip backups get placed
+	final String mcDir = "C:\\Users\\JoeRogang\\Documents\\BetterMC_forge";//"C:\\Users\\JoeRogang\\Documents\\Fabric_Server_1";		// Folder directory for server.jar
+	final String backupDir = "C:\\Users\\JoeRogang\\Documents\\MCBackups\\BetterMC_forge";//"C:\\Users\\JoeRogang\\Documents\\MCBackups\\Fabric_Server_1";		// Folder where zip backups get placed
 	final String startPerm = "Start";										// Basic perm name
 	final String cmdPerm = "Command";										// Advanced perm name
 	final String secretVcId = "805044000667074580";											// Shhh... Its a secret.
@@ -64,13 +65,14 @@ public class App extends ListenerAdapter
 	final Boolean canRevive = false;			// Enables/disables the revive command
 	
 	final Boolean expectingHeavy = true;		// Enable heavy mode or not
-	final int howHeavy = 1;					// How many lines to send in heavy mode before going light, -1 for unlimited
+	final int howHeavy = 20;					// How many lines to send in heavy mode before going light, -1 for unlimited
 	
 	User verifyCheck = null; 				// Used for y/n responses 
 	String verifyName = null;				// Same purpose
 	Timer verifyQuery = null;				// Timer for query timeout
 	
 	private Map<User, Long> userDict = new HashMap<User, Long>();		// This is just here to count 30 min for each user
+	
 	
 	@Override
 	public void onMessageReceived(MessageReceivedEvent event)
@@ -377,6 +379,10 @@ public class App extends ListenerAdapter
 				else if(message.startsWith("help", 1)) {
 					msgC.sendMessage("Check " + event.getGuild().getTextChannelsByName("info", false).get(0).getAsMention() + " for command info and server details.").queue();
 				}
+				//Test func
+				else if(message.startsWith("test", 1) && dsp != null) {
+					dsp.testFunction();
+				}
 			}
 		}
 		else if(verifyCheck != null && notBot) {	// Check for y/n, make sure its not self/bot
@@ -448,13 +454,25 @@ public class App extends ListenerAdapter
 	public Boolean startServer(MessageChannel ch, MessageChannel outpCh) {			// Starts server, then pipes server console text to messagechannel 
 		if(serverP != null && serverP.isAlive())
 			return false;
+		
+		// Initialize argsList solely because Forge has so many arguments 
+		List<String> argsList = new ArrayList<String>();
+		argsList.add(System.getProperty("java.home")+File.separator+"bin"+File.separator+"java");
+		argsList.add("-Dlog4j2.formatMsgNoLookups=true");
+		//argsList.add("-Xmx6G");
+		argsList.add("@user_jvm_args.txt");
+		argsList.add("@libraries/net/minecraftforge/forge/1.19.2-43.2.8/win_args.txt");
+		//argsList.addAll(GetStringsFromTextFile("C:\\Users\\JoeRogang\\Documents\\BetterMC_forge\\libraries\\net\\minecraftforge\\forge\\1.19.2-43.2.8\\win_args.txt"));
+		argsList.add("nogui");
+		
 		// Listed here are various process builder lines that I have used for various servers. Uncomment to include them
 		ProcessBuilder pb = new ProcessBuilder(
 		// 		System.getProperty("java.home")+File.separator+"bin"+File.separator+"java","-Xms1024M", "-Xmx4096M", "-jar", "server.jar", "nogui"							// MC starting commands
 		// 		System.getProperty("java.home")+File.separator+"bin"+File.separator+"java","-Xms1024M", "-Xmx4096M", "-jar", "forge-1.12.2-14.23.5.2854.jar", "nogui"		// Modded Forge MC starting commands
 		// 		System.getProperty("java.home")+File.separator+"bin"+File.separator+"java","-Xms1024M", "-Xmx4096M", "-jar", "fabric-server-launch.jar", "nogui"			// Modded Fabric MC starting command
-		 		System.getProperty("java.home")+File.separator+"bin"+File.separator+"java","-Xms256M", "-Xmx6G", "-jar", "fabric-server-mc.1.19.1-loader.0.14.8-launcher.0.11.0.jar", "nogui"			// Unmodded Fabric MC starting command
+		// 		System.getProperty("java.home")+File.separator+"bin"+File.separator+"java","-Xms256M", "-Xmx6G", "-jar", "fabric-server-mc.1.19.1-loader.0.14.8-launcher.0.11.0.jar", "nogui"			// Unmodded Fabric MC starting command
 		//		System.getProperty("java.home")+File.separator+"bin"+File.separator+"java", "-Xmx4096M", "-Xms256M", "-Dsun.rmi.dgc.server.gcInterval=2147483646", "-XX:+UnlockExperimentalVMOptions", "-XX:G1NewSizePercent=20", "-XX:G1ReservePercent=20", "-XX:MaxGCPauseMillis=50", "-XX:G1HeapRegionSize=32M", "-jar", "forge-1.16.5-36.2.2.jar", "nogui"	// Heavy Duty Modded Forge MC starting commands
+				argsList		
 		);
 		File dir = new File(mcDir);
 		pb.redirectErrorStream(true);
@@ -534,6 +552,24 @@ public class App extends ListenerAdapter
 		return errorCode;
 	}
 	
+	// Gets contents of a text file line by line, then outputs as a list
+	public static List<String> GetStringsFromTextFile(String filePath) {
+		List<String> argList = new ArrayList<String>();
+		
+		try {
+			Scanner scan = new Scanner(new File(filePath));
+			while(scan.hasNextLine()) {
+				argList.add(scan.nextLine().strip());
+			}
+			scan.close();
+		}
+		catch (FileNotFoundException e){
+			System.err.print("Error reading file at: " + filePath);
+		}
+		
+		return argList;
+	}
+	
 	public Boolean hasPermission(String perm, MessageReceivedEvent e) {		// Returns true if user has role 
 		try {
 			List<Role> rlist = e.getGuild().getRolesByName(perm, false);
@@ -606,6 +642,10 @@ public class App extends ListenerAdapter
 	
     public static void main( String[] args ) throws LoginException, InterruptedException
     {
+    	/*List<String> test = GetStringsFromTextFile("C:\\Users\\JoeRogang\\Documents\\BetterMC_forge\\libraries\\net\\minecraftforge\\forge\\1.19.2-43.2.8\\win_args.txt");
+    	test.forEach(s -> System.out.println(s));
+    	if(true)
+    		return;*/
     	
     	String token = "";		// Doing the smart thing and reading the token from a file
     	try {
@@ -689,6 +729,10 @@ class DiscordSyncPipe implements Runnable
 	
 	public void queueBackup() {
 		doBackup = true;
+	}
+	
+	public void testFunction() {
+		cmdChan_.sendMessage("Test"+System.currentTimeMillis()).queue();
 	}
 	
 	public void run() {
