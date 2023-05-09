@@ -1,0 +1,1 @@
+scoreboard objectives add ticks_wo_players dummy

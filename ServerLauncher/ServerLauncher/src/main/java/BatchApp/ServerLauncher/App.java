@@ -68,6 +68,8 @@ public class App extends ListenerAdapter
 	final int howHeavy = 20;					// How many lines to send in heavy mode before going light, -1 for unlimited
 	final long logFlushPeriod = (long) (0.5 * 1000);	// How often to flush the buffer and send a message (in milliseconds)
 	
+	final int sayCmdOffset = 61;			// How many characters precede the say command output
+	
 	User verifyCheck = null; 				// Used for y/n responses 
 	String verifyName = null;				// Same purpose
 	Timer verifyQuery = null;				// Timer for query timeout
@@ -476,7 +478,7 @@ public class App extends ListenerAdapter
 		pb.directory(dir);
 		try {
 			serverP = pb.start();
-			new Thread(dsp = new DiscordSyncPipe(serverP.getInputStream(), ch, logFlushPeriod, outpCh, this)).start();		// Starts input thread
+			new Thread(dsp = new DiscordSyncPipe(serverP.getInputStream(), ch, logFlushPeriod, sayCmdOffset, outpCh, this)).start();		// Starts input thread
 		} catch (IOException e) {
 			e.printStackTrace();
 			return false;
@@ -709,10 +711,11 @@ class DiscordSyncPipe implements Runnable
 	private String buffer;
 	private Timer bufferClearerTimer;		// Clears out buffer at regular intervals
 	private final long bufferFlushPeriod_;
+	private final int offset_;
 	
 	private Boolean doBackup;	// Whether we do a backup when server stops 
 	
-	public DiscordSyncPipe(InputStream istrm, MessageChannel chan, long bufferFlushPeriod, MessageChannel cmdChan, App bot) {
+	public DiscordSyncPipe(InputStream istrm, MessageChannel chan, long bufferFlushPeriod, int charLen, MessageChannel cmdChan, App bot) {
 		istrm_ = istrm;
 		chan_ = chan;
 		//heavyLoad = isHeavy;			// Whether there will be a heavy input load 
@@ -720,6 +723,7 @@ class DiscordSyncPipe implements Runnable
 		cmdChan_ = cmdChan;				// Output a final message when stream closes
 		bot_ = bot;						// Here to pass through the stop command. Pretty wacky, aint it?
 		bufferFlushPeriod_ = bufferFlushPeriod;			// Milliseconds needed to pass before flushing the buffer
+		offset_ = charLen;
 		doBackup = false;
 		buffer = "";
 		
@@ -760,7 +764,7 @@ class DiscordSyncPipe implements Runnable
 					TimeSinceLastMessage = System.currentTimeMillis();		// Get a viable buffer string, update the buffer
 					
 					//[10:27:20 INFO]: [Server] stopnow:1234
-					if(in.startsWith("[Server] stopnow:1234", 33)) {
+					if(in.startsWith("[Server] stopnow:1234", offset_)) {
 						// Message from server that means it needs to shutdown
 						System.out.println("No activity threshold reached, stopping server automatically");
 						cmdChan_.sendMessage("Server has been online for without players for 1 hour. Automatically stopping...").queue();
