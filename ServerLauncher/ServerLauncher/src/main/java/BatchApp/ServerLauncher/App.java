@@ -738,9 +738,14 @@ class DiscordSyncPipe implements Runnable
 	public void sendMessage() {		
 		if(buffer.length() > 0) {	// Make sure the buffer contains something
 			
-			if(buffer.length() >= 2000) {	// If its greater than 2000 chars, send 2000 chars
-				chan_.sendMessage(buffer.substring(0, 2000).trim()).queue();
-				buffer = buffer.substring(2000).concat("\n");	// Add the extra to the buffer for next time
+			if(buffer.length() >= 2000) {	// If its greater than 2000 chars, send 2000 chars or less
+				int lastNLIndex = buffer.lastIndexOf('\n', 2000);	// Search for the last fit-able message in our 2000 char limit
+				if(lastNLIndex < 1) {	// -1 if nothing found (beeg line), 0 if it starts with a newline (don't want to send substring(0, 0))
+					lastNLIndex = 2000;			// So give up on fitting in a line, just send up to buffer limit
+				}
+				
+				chan_.sendMessage(buffer.substring(0, lastNLIndex).trim()).queue();
+				buffer = buffer.substring(lastNLIndex).stripLeading();			// add rest to buffer, then get rid of leading newline without removing newline at end
 			}
 			else {
 				chan_.sendMessage(buffer.trim()).queue();	// Otherwise, just send whatever is inside the buffer and reset it
@@ -772,13 +777,10 @@ class DiscordSyncPipe implements Runnable
 					}
 					else {
 						in = ipRegEx.matcher(in).replaceAll("[/\\\\*\\\\*.\\\\*\\\\*.\\\\*\\\\*.\\\\*\\\\**:\\\\***\\\\*]");	// Strip away IP addresses from the log output (no more doxxing!!!)
-						buffer = buffer.concat(in);			// Then add message to buffer
+						buffer = buffer.concat(in).concat("\n");		// Then add message to buffer, and add a newline to separate each message
 
 						if(buffer.length() >= 2000) {
 							sendMessage();		// We maxed out our buffer, send message
-						}
-						else {
-							buffer = buffer.concat("\n");	// Add a newline for the next line received
 						}
 					}
 				}
