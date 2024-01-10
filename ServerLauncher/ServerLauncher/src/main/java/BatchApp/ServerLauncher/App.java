@@ -382,6 +382,15 @@ public class App extends ListenerAdapter
 				else if(message.startsWith("help", 1)) {
 					msgC.sendMessage("Check " + event.getGuild().getTextChannelsByName("info", false).get(0).getAsMention() + " for command info and server details.").queue();
 				}
+				// idk
+				else if(message.startsWith("anime", 1)) {
+					try {
+						event.getAuthor().openPrivateChannel().delay(2, TimeUnit.SECONDS).flatMap(channel -> channel.sendMessage("animw")).queue();
+					}
+					catch(Exception e) {
+						System.out.println(e.toString());
+					}
+				}
 			}
 		}
 		else if(verifyCheck != null && notBot) {	// Check for y/n, make sure its not self/bot
