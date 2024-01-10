@@ -50,8 +50,8 @@ public class App extends ListenerAdapter
 	final String logchannel = "server-log";									// Server log
 	final String revChannel = "revives";									// Revive log
 	final String lobbyChannel = "lobby-commands";							// Lobby command input
-	final String mcDir = "C:\\Users\\JoeRogang\\Documents\\BetterMC_forge";//"C:\\Users\\JoeRogang\\Documents\\Fabric_Server_1";		// Folder directory for server.jar
-	final String backupDir = "C:\\Users\\JoeRogang\\Documents\\MCBackups\\BetterMC_forge";//"C:\\Users\\JoeRogang\\Documents\\MCBackups\\Fabric_Server_1";		// Folder where zip backups get placed
+	final String mcDir = "C:\\Users\\JoeRogang\\Documents\\Valhelsia-6-6.1.0-pre2-SERVER";//"C:\\Users\\JoeRogang\\Documents\\Fabric_Server_1";		// Folder directory for server.jar
+	final String backupDir = "C:\\Users\\JoeRogang\\Documents\\MCBackups\\Valhelsia";//"C:\\Users\\JoeRogang\\Documents\\MCBackups\\Fabric_Server_1";		// Folder where zip backups get placed
 	final String startPerm = "Start";										// Basic perm name
 	final String cmdPerm = "Command";										// Advanced perm name
 	final String secretVcId = "805044000667074580";											// Shhh... Its a secret.
@@ -68,7 +68,7 @@ public class App extends ListenerAdapter
 	final int howHeavy = 20;					// How many lines to send in heavy mode before going light, -1 for unlimited
 	final long logFlushPeriod = (long) (0.5 * 1000);	// How often to flush the buffer and send a message (in milliseconds)
 	
-	final int sayCmdOffset = 61;			// How many characters precede the say command output
+	final int sayCmdOffset = 74;			// How many characters precede the say command output
 	
 	User verifyCheck = null; 				// Used for y/n responses 
 	String verifyName = null;				// Same purpose
@@ -81,6 +81,7 @@ public class App extends ListenerAdapter
 	public void onMessageReceived(MessageReceivedEvent event)
 	{
 		String message = event.getMessage().getContentDisplay();			// Starting variables to reduce function calls
+		String cmdMsg = message.toLowerCase().trim();
 		MessageChannel msgC = event.getChannel();
 		String chName = msgC.getName();
 		Boolean notBot = !event.getAuthor().isBot();
@@ -89,12 +90,12 @@ public class App extends ListenerAdapter
 			event.getGuild().getTextChannelsByName(logChan, false).get(0).sendMessage(event.getMember().getEffectiveName()+" ("+event.getMember().getAsMention()+") passed `"+ message.replace('`', '\'').substring(0, message.length() >= 2000 ? 1900 : message.length()) +"` via logchannel at "+event.getMessage().getTimeCreated()).queue();
 			passCommand(message);
 		}
-		else if(message.startsWith("%") && notBot) {
+		else if(cmdMsg.startsWith("%") && notBot) {
 			
 			if(chName.equals(lobbyChannel)) {								// Lobby Commands
 				// Join
-				if(message.startsWith("join ", 1)) {
-					String roleName = message.substring(6).trim().toLowerCase();	// Get the lobby to join
+				if(cmdMsg.startsWith("join ", 1)) {
+					String roleName = cmdMsg.substring(6).trim();	// Get the lobby to join
 					List<Role> addList = event.getGuild().getRolesByName(roleName, false);
 					
 					if(!addList.isEmpty()) {
@@ -118,8 +119,8 @@ public class App extends ListenerAdapter
 					}
 				}
 				// Leave
-				else if(message.startsWith("leave ", 1)) {
-					String roleName = message.substring(7).trim().toLowerCase();				// Leaves the specified lobby role
+				else if(cmdMsg.startsWith("leave ", 1)) {
+					String roleName = cmdMsg.substring(7).trim();				// Leaves the specified lobby role
 					List<Role> remList = event.getGuild().getRolesByName(roleName, false);
 					
 					if(!remList.isEmpty()) {
@@ -130,8 +131,8 @@ public class App extends ListenerAdapter
 					}
 				}
 				// Lock
-				else if(message.startsWith("lock ", 1)) {
-					String roleName = message.substring(6).trim().toLowerCase();
+				else if(cmdMsg.startsWith("lock ", 1)) {
+					String roleName = cmdMsg.substring(6).trim();
 					List<Role> rList = event.getGuild().getRolesByName(roleName, false);
 					
 					if(!rList.isEmpty() && event.getMember().getRoles().contains(rList.get(0))) {
@@ -142,8 +143,8 @@ public class App extends ListenerAdapter
 					
 				}
 				// Unlock
-				else if(message.startsWith("unlock ", 1)) {
-					String roleName = message.substring(8).trim().toLowerCase();
+				else if(cmdMsg.startsWith("unlock ", 1)) {
+					String roleName = cmdMsg.substring(8).trim();
 					List<Role> rList = event.getGuild().getRolesByName(roleName, false);
 					
 					if(!rList.isEmpty() && event.getMember().getRoles().contains(rList.get(0))) {
@@ -152,7 +153,7 @@ public class App extends ListenerAdapter
 					}
 				}
 				//Status
-				else if(message.startsWith("status", 1)) {							// Output lobby role name, lobby lock status, and lobby members
+				else if(cmdMsg.startsWith("status", 1)) {							// Output lobby role name, lobby lock status, and lobby members
 					Guild efficiency = event.getGuild();
 					String m1 = "", m2 = "", m3 = "";
 					
@@ -193,7 +194,7 @@ public class App extends ListenerAdapter
 					}
 				}
 				//Help
-				else if(message.startsWith("help", 1)) {
+				else if(cmdMsg.startsWith("help", 1)) {
 					msgC.sendMessage("Check "+ event.getGuild().getTextChannelsByName("lobby-info", false).get(0).getAsMention() +" for command info.").queue();
 					
 				}
@@ -201,7 +202,7 @@ public class App extends ListenerAdapter
 			
 			if(chName.equals(cmdChannel)) {											// Server Commands
 				// Start
-				if(message.startsWith("start", 1)) {
+				if(cmdMsg.startsWith("start", 1)) {
 					msgC.sendTyping().queue();
 					event.getGuild().getTextChannelsByName(logChan, false).get(0).sendMessage(event.getMember().getEffectiveName()+" ("+event.getMember().getAsMention()+") requested a server start at "+event.getMessage().getTimeCreated()).queue();
 					
@@ -230,7 +231,7 @@ public class App extends ListenerAdapter
 						msgC.sendMessage("Launching sequence failed.").queue();
 				}
 				// Stop
-				else if(message.startsWith("stop", 1)) {
+				else if(cmdMsg.startsWith("stop", 1)) {
 					msgC.sendTyping().queue();
 					event.getGuild().getTextChannelsByName(logChan, false).get(0).sendMessage(event.getMember().getEffectiveName()+" (" + event.getMember().getAsMention()+") requested a server stop at "+event.getMessage().getTimeCreated()).queue();
 					
@@ -261,13 +262,13 @@ public class App extends ListenerAdapter
 						e.printStackTrace();
 					}*/
 					
-					if(message.startsWith("b", 5) || message.startsWith(" backup", 5)) {		// User queuing up a backup after server stop
+					if(cmdMsg.startsWith("b", 5) || cmdMsg.startsWith(" backup", 5)) {		// User queuing up a backup after server stop
 						dsp.queueBackup();
 						event.getGuild().getTextChannelsByName(logChan, false).get(0).sendMessage(event.getMember().getEffectiveName()+" additionally requested to backup the world").queue();
 					}
 					
 					msgC.sendMessage("Attempting to stop the server...").queue();		// Soft stop of server first
-					if(message.startsWith("!", 5)) {								// Hard stop requested
+					if(cmdMsg.startsWith("!", 5)) {								// Hard stop requested
 							msgC.sendTyping().queue();
 							/*try {
 								this.wait(1900);
@@ -290,7 +291,7 @@ public class App extends ListenerAdapter
 					}
 				}
 				// Status
-				else if(message.startsWith("status", 1)) {		// Simple check for server life
+				else if(cmdMsg.startsWith("status", 1)) {		// Simple check for server life
 					Presence pres = event.getJDA().getPresence();
 					if(serverP != null && serverP.isAlive()) {
 						pres.setStatus(OnlineStatus.ONLINE);
@@ -308,7 +309,7 @@ public class App extends ListenerAdapter
 					}
 				}
 				// CMD
-				else if(message.startsWith("cmd ", 1)) {
+				else if(cmdMsg.startsWith("cmd ", 1)) {
 					event.getGuild().getTextChannelsByName(logChan, false).get(0).sendMessage(event.getMember().getEffectiveName()+" ("+event.getMember().getAsMention()+") passed command `"+ message.replace('`', '\'').substring(5, message.length() >= 2000 ? 1900 : message.length()) +"` at "+event.getMessage().getTimeCreated()).queue();
 					
 					if(!hasPermission(cmdPerm, event)) {
@@ -322,7 +323,7 @@ public class App extends ListenerAdapter
 						msgC.sendMessage("Command pass failure.").queue();
 				}
 				// Revive
-				else if(message.startsWith("revive ", 1) && canRevive) {
+				else if(cmdMsg.startsWith("revive ", 1) && canRevive) {
 					if(!hasPermission(startPerm, event)) {
 						msgC.sendMessage("No permission: Need "+startPerm+" role.").queue();
 						return;
@@ -336,7 +337,7 @@ public class App extends ListenerAdapter
 					//msgC.sendTyping().queue();									// Fake typing
 				}
 				// Backup
-				else if(message.startsWith("backup", 1)) {
+				else if(cmdMsg.startsWith("backup", 1)) {
 					msgC.sendTyping().queue();
 					event.getGuild().getTextChannelsByName(logChan, false).get(0).sendMessage(event.getMember().getEffectiveName()+" ("+event.getMember().getAsMention()+") requested to backup the world at "+event.getMessage().getTimeCreated()).queue();
 					
@@ -379,11 +380,11 @@ public class App extends ListenerAdapter
 					
 				}
 				//Help
-				else if(message.startsWith("help", 1)) {
+				else if(cmdMsg.startsWith("help", 1)) {
 					msgC.sendMessage("Check " + event.getGuild().getTextChannelsByName("info", false).get(0).getAsMention() + " for command info and server details.").queue();
 				}
 				// idk
-				else if(message.startsWith("anime", 1)) {
+				else if(cmdMsg.startsWith("anime", 1)) {
 					try {
 						event.getAuthor().openPrivateChannel().delay(2, TimeUnit.SECONDS).flatMap(channel -> channel.sendMessage("animw")).queue();
 					}
@@ -394,7 +395,7 @@ public class App extends ListenerAdapter
 			}
 		}
 		else if(verifyCheck != null && notBot) {	// Check for y/n, make sure its not self/bot
-			if(message.trim().toLowerCase().equals("y") && event.getAuthor().equals(verifyCheck)) {	// If 'y' and user is original revive requester 
+			if(cmdMsg.equals("y") && event.getAuthor().equals(verifyCheck)) {	// If 'y' and user is original revive requester 
 				verifyQuery.cancel(); 									// Theoretically this shouldn't ever be null at this point so I don't need error checking
 				if(passCommand("gamemode survival " + verifyName)) {	// Ok i don't really like all these nested if statements but idk i dont really have a choice here
 					event.getGuild().getTextChannelsByName(revChannel, true).get(0).sendMessage(verifyCheck.getName()+"#"+verifyCheck.getDiscriminator()+
@@ -406,7 +407,7 @@ public class App extends ListenerAdapter
 				verifyName = null;
 				verifyCheck = null;			// Reset y/n query
 			}
-			else if(message.trim().toLowerCase().equals("n") && event.getAuthor().equals(verifyCheck)) {	// n means cancel the request
+			else if(cmdMsg.equals("n") && event.getAuthor().equals(verifyCheck)) {	// n means cancel the request
 				verifyQuery.cancel();
 				event.getChannel().sendMessage("Revive cancelled.").queue();
 				verifyName = null;
@@ -464,14 +465,14 @@ public class App extends ListenerAdapter
 			return false;
 		
 		// Initialize argsList solely because Forge has so many arguments 
-		List<String> argsList = new ArrayList<String>();
+		/*List<String> argsList = new ArrayList<String>();
 		argsList.add(System.getProperty("java.home")+File.separator+"bin"+File.separator+"java");
 		argsList.add("-Dlog4j2.formatMsgNoLookups=true");
 		//argsList.add("-Xmx6G");
 		argsList.add("@user_jvm_args.txt");
 		argsList.add("@libraries/net/minecraftforge/forge/1.19.2-43.2.8/win_args.txt");
 		//argsList.addAll(GetStringsFromTextFile("C:\\Users\\JoeRogang\\Documents\\BetterMC_forge\\libraries\\net\\minecraftforge\\forge\\1.19.2-43.2.8\\win_args.txt"));
-		argsList.add("nogui");
+		argsList.add("nogui");*/
 		
 		// Listed here are various process builder lines that I have used for various servers. Uncomment to include them
 		ProcessBuilder pb = new ProcessBuilder(
@@ -480,7 +481,8 @@ public class App extends ListenerAdapter
 		// 		System.getProperty("java.home")+File.separator+"bin"+File.separator+"java","-Xms1024M", "-Xmx4096M", "-jar", "fabric-server-launch.jar", "nogui"			// Modded Fabric MC starting command
 		// 		System.getProperty("java.home")+File.separator+"bin"+File.separator+"java","-Xms256M", "-Xmx6G", "-jar", "fabric-server-mc.1.19.1-loader.0.14.8-launcher.0.11.0.jar", "nogui"			// Unmodded Fabric MC starting command
 		//		System.getProperty("java.home")+File.separator+"bin"+File.separator+"java", "-Xmx4096M", "-Xms256M", "-Dsun.rmi.dgc.server.gcInterval=2147483646", "-XX:+UnlockExperimentalVMOptions", "-XX:G1NewSizePercent=20", "-XX:G1ReservePercent=20", "-XX:MaxGCPauseMillis=50", "-XX:G1HeapRegionSize=32M", "-jar", "forge-1.16.5-36.2.2.jar", "nogui"	// Heavy Duty Modded Forge MC starting commands
-				argsList		
+		//		argsList		
+				System.getProperty("java.home")+File.separator+"bin"+File.separator+"java", "-Xms4G", "-Xmx6G", "-XX:+UseG1GC", "-XX:+UnlockExperimentalVMOptions", "-XX:MaxGCPauseMillis=100", "-XX:+DisableExplicitGC", "-XX:TargetSurvivorRatio=90", "-XX:G1NewSizePercent=50", "-XX:G1MaxNewSizePercent=80", "-XX:G1MixedGCLiveThresholdPercent=50", "-XX:+AlwaysPreTouch", "@libraries/net/minecraftforge/forge/1.20.1-47.2.18/win_args.txt", "nogui"	// Essentially the Forge list but in one line
 		);
 		File dir = new File(mcDir);
 		pb.redirectErrorStream(true);
