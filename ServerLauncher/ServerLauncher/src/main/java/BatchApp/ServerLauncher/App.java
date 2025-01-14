@@ -50,8 +50,8 @@ public class App extends ListenerAdapter
 	final String logchannel = "server-log";									// Server log
 	final String revChannel = "revives";									// Revive log
 	final String lobbyChannel = "lobby-commands";							// Lobby command input
-	final String mcDir = "C:\\Users\\JoeRogang\\Documents\\Valhelsia-6-6.1.0-pre2-SERVER";//"C:\\Users\\JoeRogang\\Documents\\Fabric_Server_1";		// Folder directory for server.jar
-	final String backupDir = "C:\\Users\\JoeRogang\\Documents\\MCBackups\\Valhelsia";//"C:\\Users\\JoeRogang\\Documents\\MCBackups\\Fabric_Server_1";		// Folder where zip backups get placed
+	final String mcDir = "C:\\Users\\JoeRogang\\Documents\\AllTheMods10-1.24";//"C:\\Users\\JoeRogang\\Documents\\Fabric_Server_1";		// Folder directory for server.jar
+	final String backupDir = "C:\\Users\\JoeRogang\\Documents\\MCBackups\\AllTheMods10";//"C:\\Users\\JoeRogang\\Documents\\MCBackups\\Fabric_Server_1";		// Folder where zip backups get placed
 	final String startPerm = "Start";										// Basic perm name
 	final String cmdPerm = "Command";										// Advanced perm name
 	final String secretVcId = "805044000667074580";											// Shhh... Its a secret.
@@ -68,7 +68,7 @@ public class App extends ListenerAdapter
 	final int howHeavy = 20;					// How many lines to send in heavy mode before going light, -1 for unlimited
 	final long logFlushPeriod = (long) (0.5 * 1000);	// How often to flush the buffer and send a message (in milliseconds)
 	
-	final int sayCmdOffset = 74;			// How many characters precede the say command output
+	final int sayCmdOffset = 61;			// How many characters precede the say command output
 	
 	User verifyCheck = null; 				// Used for y/n responses 
 	String verifyName = null;				// Same purpose
@@ -482,7 +482,8 @@ public class App extends ListenerAdapter
 		// 		System.getProperty("java.home")+File.separator+"bin"+File.separator+"java","-Xms256M", "-Xmx6G", "-jar", "fabric-server-mc.1.19.1-loader.0.14.8-launcher.0.11.0.jar", "nogui"			// Unmodded Fabric MC starting command
 		//		System.getProperty("java.home")+File.separator+"bin"+File.separator+"java", "-Xmx4096M", "-Xms256M", "-Dsun.rmi.dgc.server.gcInterval=2147483646", "-XX:+UnlockExperimentalVMOptions", "-XX:G1NewSizePercent=20", "-XX:G1ReservePercent=20", "-XX:MaxGCPauseMillis=50", "-XX:G1HeapRegionSize=32M", "-jar", "forge-1.16.5-36.2.2.jar", "nogui"	// Heavy Duty Modded Forge MC starting commands
 		//		argsList		
-				System.getProperty("java.home")+File.separator+"bin"+File.separator+"java", "-Xms4G", "-Xmx6G", "-XX:+UseG1GC", "-XX:+UnlockExperimentalVMOptions", "-XX:MaxGCPauseMillis=100", "-XX:+DisableExplicitGC", "-XX:TargetSurvivorRatio=90", "-XX:G1NewSizePercent=50", "-XX:G1MaxNewSizePercent=80", "-XX:G1MixedGCLiveThresholdPercent=50", "-XX:+AlwaysPreTouch", "@libraries/net/minecraftforge/forge/1.20.1-47.2.18/win_args.txt", "nogui"	// Essentially the Forge list but in one line
+		//		System.getProperty("java.home")+File.separator+"bin"+File.separator+"java", "-Xms4G", "-Xmx6G", "-XX:+UseG1GC", "-XX:+UnlockExperimentalVMOptions", "-XX:MaxGCPauseMillis=100", "-XX:+DisableExplicitGC", "-XX:TargetSurvivorRatio=90", "-XX:G1NewSizePercent=50", "-XX:G1MaxNewSizePercent=80", "-XX:G1MixedGCLiveThresholdPercent=50", "-XX:+AlwaysPreTouch", "@libraries/net/minecraftforge/forge/1.20.1-47.2.18/win_args.txt", "nogui"	// Essentially the Forge list but in one line
+				System.getProperty("java.home")+File.separator+"bin"+File.separator+"java", "@user_jvm_args.txt", "@libraries/net/neoforged/neoforge/21.1.80/win_args.txt", "nogui"		// Neoforge args
 		);
 		File dir = new File(mcDir);
 		pb.redirectErrorStream(true);
